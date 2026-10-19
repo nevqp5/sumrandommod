@@ -1,35 +1,36 @@
- 
+name: Build Geode Mod
+
 on:
   workflow_dispatch:
   push:
     branches:
       - "**"
- 
+
 jobs:
   build:
     name: Windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
- 
+
       - name: Build the mod
         uses: geode-sdk/build-geode-mod@main
         with:
-          bindings: geode-sdk/bindings
-          bindings-ref: main
           combine: true
+          sdk: latest
+          bindings-ref: f050fd74ad531b0827377c97510cb807903ff1b3
+          configure-args: -DSKIP_BUILDING_CODEGEN=OFF
           target: Win64
- 
+
   package:
-    name: Package build
+    name: Package builds
     runs-on: ubuntu-latest
     needs: ["build"]
     steps:
       - uses: geode-sdk/build-geode-mod/combine@main
         id: build
- 
+
       - uses: actions/upload-artifact@v4
         with:
           name: Build Output
           path: ${{ steps.build.outputs.build-output }}
- 
