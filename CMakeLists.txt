@@ -1,22 +1,10 @@
-cmake_minimum_required(VERSION 3.21)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+cmake_minimum_required(VERSION 3.25)
+project(MacroLegitAssist VERSION 1.0.0)
 
-project(MacroAssist VERSION 1.0.0)
+find_package(Geode REQUIRED)
 
-# main.cpp тепер лежить у src/
-file(GLOB SOURCES src/*.cpp)
-add_library(${PROJECT_NAME} SHARED ${SOURCES})
+include_directories(${Geode_INCLUDE_DIRS})
 
-if (NOT DEFINED ENV{GEODE_SDK})
-	message(FATAL_ERROR "Unable to find Geode SDK! Please define GEODE_SDK environment variable to point to Geode")
-endif()
-
-add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
-
-# Бібліотека для читання .gdr
-CPMAddPackage("gh:maxnut/GDReplayFormat#gdr2")
-target_link_libraries(${PROJECT_NAME} libGDR)
-
-setup_geode_mod(${PROJECT_NAME})
+add_geode_mod(macro_legit_assist
+    main.cpp
+)
