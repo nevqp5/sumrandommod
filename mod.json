@@ -24,7 +24,7 @@
 				"filters": [
 					{
 						"description": "Macro",
-						"files": ["*.gdr", "*.txt"]
+						"files": ["*.gdr", "*.gdr2", "*.txt"]
 					}
 				]
 			}

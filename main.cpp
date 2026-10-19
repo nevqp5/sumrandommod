@@ -6,7 +6,7 @@
  * Раніше за себе інпут не рухається (тільки затримка).
  *
  * Формати макросу:
- *   .gdr — GDReplayFormat (через бібліотеку gdr)
+ *   .gdr / .gdr2 — GDReplayFormat v2 (через бібліотеку libGDR)
  *   .txt — рядки:  <frame> <down|up> [button=1] [p1|p2]   ('#' = коментар)
  */
 
@@ -110,7 +110,7 @@ static void loadMacro() {
 	auto ext = path.extension().string();
 	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
 
-	if (ext == ".gdr") loadGdr(path);
+	if (ext == ".gdr" || ext == ".gdr2") loadGdr(path);
 	else loadTxt(path);
 
 	int offset = static_cast<int>(Mod::get()->getSettingValue<int64_t>("frame-offset"));

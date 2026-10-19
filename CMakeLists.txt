@@ -16,7 +16,7 @@ endif()
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
 # Бібліотека для читання .gdr
-CPMAddPackage("gh:maxnut/GDReplayFormat#main")
-target_link_libraries(${PROJECT_NAME} gdr)
+CPMAddPackage("gh:maxnut/GDReplayFormat#gdr2")
+target_link_libraries(${PROJECT_NAME} libGDR)
 
 setup_geode_mod(${PROJECT_NAME})
