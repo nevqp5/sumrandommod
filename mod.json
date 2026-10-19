@@ -7,23 +7,24 @@
 	"name": "Macro Assist",
 	"version": "v1.0.1",
 	"developer": "yourname",
-	"description": "Snaps your inputs to the timing of a loaded macro (configurable delay).",
+	"description": "Snaps or delays your inputs to match the precise timing of a loaded .gdr macro.",
 	"settings": {
 		"enabled": {
 			"type": "bool",
 			"name": "Enabled",
+			"description": "Увімкнути або вимкнути асист",
 			"default": true
 		},
 		"macro-path": {
 			"type": "file",
 			"name": "Macro file",
-			"description": "Macro in .gdr (GDReplayFormat) or .txt format (see comment in src/main.cpp).",
+			"description": "Файл макросу у форматі .gdr, .gdr2 або .txt",
 			"default": "",
 			"control": {
 				"dialog": "open",
 				"filters": [
 					{
-						"description": "Macro",
+						"description": "Macro files",
 						"files": [
 							"*.gdr",
 							"*.gdr2",
@@ -36,7 +37,7 @@
 		"max-delay": {
 			"type": "int",
 			"name": "Window (frames)",
-			"description": "Скільки кадрів ДО події макросу інпут вимкнено (block) або може бути відкладений (delay).",
+			"description": "Допустиме вікно кадрів ДО події макросу для затримки чи блокування",
 			"default": 4,
 			"min": 0,
 			"max": 60,
@@ -48,7 +49,7 @@
 		"frame-offset": {
 			"type": "int",
 			"name": "Frame offset",
-			"description": "Shifts macro frames by N. Use this if everything lands 1 frame early/late (0-based vs 1-based).",
+			"description": "Зсув кадрів макросу на N (для корекції 0-based та 1-based затримок)",
 			"default": 0,
 			"min": -10,
 			"max": 10,
@@ -60,19 +61,19 @@
 		"block-unmatched": {
 			"type": "bool",
 			"name": "Block unmatched inputs",
-			"description": "If on, presses/releases that don't match any macro event are swallowed. If off, they pass through unchanged.",
+			"description": "Якщо увімкнено, усі натискання/відпускання без збігу в макросі блокуються",
 			"default": false
 		},
 		"delay-mode": {
 			"type": "bool",
 			"name": "Delay instead of block",
-			"description": "Off: ранні кліки блокуються. On: ранні кліки відкладаються на кадр макросу.",
+			"description": "Off: блокувати ранні кліки. On: відкладати ранні кліки на кадр макросу",
 			"default": false
 		},
 		"debug-log": {
 			"type": "bool",
 			"name": "Debug log",
-			"description": "Пише в лог кожен клік: кадр і найближча подія макросу.",
+			"description": "Виводити лог про кожен клік та знайдені збіги у консоль/повідомлення",
 			"default": true
 		}
 	}
