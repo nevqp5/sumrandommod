@@ -5,6 +5,7 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 project(MacroAssist VERSION 1.0.0)
 
+# main.cpp тепер лежить у src/
 file(GLOB SOURCES src/*.cpp)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
@@ -13,4 +14,9 @@ if (NOT DEFINED ENV{GEODE_SDK})
 endif()
 
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
+
+# Бібліотека для читання .gdr
+CPMAddPackage("gh:maxnut/GDReplayFormat#main")
+target_link_libraries(${PROJECT_NAME} gdr)
+
 setup_geode_mod(${PROJECT_NAME})

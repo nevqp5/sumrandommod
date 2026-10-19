@@ -17,14 +17,14 @@
 		"macro-path": {
 			"type": "file",
 			"name": "Macro file",
-			"description": "Macro in .json (MegaHack export) or .txt format (see README in main.cpp).",
+			"description": "Macro in .gdr (GDReplayFormat) or .txt format (see comment in src/main.cpp).",
 			"default": "",
 			"control": {
 				"dialog": "open",
 				"filters": [
 					{
 						"description": "Macro",
-						"files": ["*.json", "*.txt"]
+						"files": ["*.gdr", "*.txt"]
 					}
 				]
 			}

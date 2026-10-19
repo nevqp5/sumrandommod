@@ -1,32 +1,20 @@
 /*
  * Macro Assist — Geode mod for Geometry Dash 2.2081 (Windows)
  *
- * Idea: you load a macro. When YOU press/release a button, the mod looks for the
- * nearest macro event of the same kind that is at the current frame or up to
- * `max-delay` frames in the future, and delays your input so it lands exactly on
- * that macro frame. (You pressed on 996, macro says 1000 -> input fires on 1000.)
- * It can only delay, never move input earlier, so if you press too late
- * (after the macro frame) the input passes through unchanged.
+ * Ти натискаєш кнопку -> мод шукає найближчу подію макросу того ж типу на поточному
+ * кадрі або до `max-delay` кадрів уперед і відкладає твій інпут точно на цей кадр.
+ * Раніше за себе інпут не рухається (тільки затримка).
  *
- * Supported macro formats
- * -----------------------
- * 1) .json  — expects {"events":[{"frame":1000,"down":true,"btn":1,"p2":false}, ...]}
- *    NOTE: I could not verify MegaHack's exact JSON key names. All the key lookups
- *    are in loadJson() below — compare with your actual exported file and rename
- *    the keys if they differ. Binary .mhr is NOT supported.
- * 2) .txt   — one event per line:  <frame> <down|up> [button=1] [p1|p2]
- *    example:  1000 down
- *              1003 up
- *              1040 down 1 p2
- *    lines starting with '#' are ignored.
- *
- * Frames are physics steps (what m_gameState.m_currentProgress counts), so run
- * with the same TPS (e.g. 240) that the macro was recorded at.
+ * Формати макросу:
+ *   .gdr — GDReplayFormat (через бібліотеку gdr)
+ *   .txt — рядки:  <frame> <down|up> [button=1] [p1|p2]   ('#' = коментар)
  */
 
 #include <Geode/Geode.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
+
+#include <gdr/gdr.hpp>
 
 #include <algorithm>
 #include <fstream>
@@ -34,6 +22,10 @@
 #include <vector>
 
 using namespace geode::prelude;
+
+struct AssistReplay : gdr::Replay<AssistReplay, gdr::Input<>> {
+	AssistReplay() : Replay("MacroAssist", 1) {}
+};
 
 struct MacroEvent {
 	int frame;
@@ -56,26 +48,24 @@ namespace state {
 	inline bool injecting = false;
 }
 
-static void loadJson(std::filesystem::path const& path) {
-	auto res = file::readJson(path);
+static void loadGdr(std::filesystem::path const& path) {
+	auto bytes = file::readBinary(path);
+	if (!bytes) {
+		log::error("Macro Assist: can't read {}: {}", path.string(), bytes.unwrapErr());
+		return;
+	}
+	auto res = AssistReplay::importData(bytes.unwrap());
 	if (!res) {
-		log::error("Failed to read macro json: {}", res.unwrapErr());
+		log::error("Macro Assist: can't parse .gdr: {}", res.unwrapErr());
 		return;
 	}
-	auto json = res.unwrap();
-	auto arr = json["events"].asArray();
-	if (!arr) {
-		log::error("Macro json has no 'events' array — check key names in loadJson()");
-		return;
-	}
-	for (auto& ev : arr.unwrap()) {
-		// >>> adjust these key names to match your exported file <<<
-		if (!ev.contains("frame") || !ev.contains("down")) continue;
+	auto replay = std::move(res).unwrap();
+	for (auto const& in : replay.inputs) {
 		MacroEvent e;
-		e.frame = static_cast<int>(ev["frame"].asInt().unwrapOr(0));
-		e.down = ev["down"].asBool().unwrapOr(false);
-		e.button = ev.contains("btn") ? static_cast<int>(ev["btn"].asInt().unwrapOr(1)) : 1;
-		e.p1 = ev.contains("p2") ? !ev["p2"].asBool().unwrapOr(false) : true;
+		e.frame = static_cast<int>(in.frame);
+		e.down = in.down;
+		e.button = static_cast<int>(in.button);
+		e.p1 = !in.player2;
 		state::events.push_back(e);
 	}
 }
@@ -83,7 +73,7 @@ static void loadJson(std::filesystem::path const& path) {
 static void loadTxt(std::filesystem::path const& path) {
 	std::ifstream in(path);
 	if (!in) {
-		log::error("Failed to open macro txt");
+		log::error("Macro Assist: can't open {}", path.string());
 		return;
 	}
 	std::string line;
@@ -112,9 +102,15 @@ static void loadMacro() {
 	state::pending.clear();
 
 	auto path = Mod::get()->getSettingValue<std::filesystem::path>("macro-path");
-	if (path.empty()) return;
+	if (path.empty()) {
+		log::warn("Macro Assist: no macro file selected");
+		return;
+	}
 
-	if (path.extension() == ".json") loadJson(path);
+	auto ext = path.extension().string();
+	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+
+	if (ext == ".gdr") loadGdr(path);
 	else loadTxt(path);
 
 	int offset = static_cast<int>(Mod::get()->getSettingValue<int64_t>("frame-offset"));
@@ -123,7 +119,7 @@ static void loadMacro() {
 	std::stable_sort(state::events.begin(), state::events.end(),
 		[](MacroEvent const& a, MacroEvent const& b) { return a.frame < b.frame; });
 
-	log::info("Macro Assist: loaded {} events", state::events.size());
+	log::info("Macro Assist: loaded {} events from {}", state::events.size(), path.string());
 }
 
 class $modify(AssistPlayLayer, PlayLayer) {
@@ -141,9 +137,11 @@ class $modify(AssistPlayLayer, PlayLayer) {
 };
 
 class $modify(AssistBaseLayer, GJBaseGameLayer) {
-	// Intercept the player's own inputs.
+	// Перехоплює інпут гравця.
 	void handleButton(bool down, int button, bool isPlayer1) {
 		auto mod = Mod::get();
+
+		// Вимкнено / нема макросу / це наша власна ін'єкція -> повністю нічого не чіпаємо.
 		if (state::injecting
 			|| state::events.empty()
 			|| !mod->getSettingValue<bool>("enabled")
@@ -154,35 +152,51 @@ class $modify(AssistBaseLayer, GJBaseGameLayer) {
 		int cur = m_gameState.m_currentProgress;
 		int maxDelay = static_cast<int>(mod->getSettingValue<int64_t>("max-delay"));
 
+		// Якщо для цієї кнопки вже є відкладений інпут — новий мусить іти ПІСЛЯ нього,
+		// інакше порядок press/release ламається і кнопка "залипає".
+		PendingInput* tail = nullptr;
+		for (auto& p : state::pending) {
+			if (p.button == button && p.p1 == isPlayer1) tail = &p;
+		}
+		int minFrame = tail ? std::max(cur, tail->frame) : cur;
+
 		MacroEvent* match = nullptr;
-		for (auto& e : state::events) {
-			if (e.frame < cur) continue;       // already in the past
-			if (e.frame > cur + maxDelay) break; // sorted, nothing further matters
-			if (e.used || e.down != down || e.button != button || e.p1 != isPlayer1) continue;
-			match = &e;
+		auto it = std::lower_bound(state::events.begin(), state::events.end(), minFrame,
+			[](MacroEvent const& e, int f) { return e.frame < f; });
+		for (; it != state::events.end(); ++it) {
+			if (it->frame > cur + maxDelay) break;
+			if (it->used || it->down != down || it->button != button || it->p1 != isPlayer1) continue;
+			match = &*it;
 			break;
 		}
 
 		if (!match) {
+			if (tail) {
+				// зберігаємо порядок: ставимо одразу за попереднім відкладеним
+				if (mod->getSettingValue<bool>("block-unmatched")) return;
+				state::pending.push_back({tail->frame, down, button, isPlayer1});
+				return;
+			}
 			if (mod->getSettingValue<bool>("block-unmatched")) return;
 			return GJBaseGameLayer::handleButton(down, button, isPlayer1);
 		}
 
 		match->used = true;
-		if (match->frame == cur) {
+		if (!tail && match->frame <= cur) {
 			return GJBaseGameLayer::handleButton(down, button, isPlayer1);
 		}
-		// Delay: swallow now, fire on the macro's frame.
 		state::pending.push_back({match->frame, down, button, isPlayer1});
 	}
 
-	// Fire delayed inputs at the start of the right physics step.
+	// Виконує відкладені інпути на початку потрібного фізичного кроку.
 	void processCommands(float dt) {
 		if (!state::pending.empty() && PlayLayer::get()) {
+			bool enabled = Mod::get()->getSettingValue<bool>("enabled");
 			int cur = m_gameState.m_currentProgress;
 			state::injecting = true;
 			for (auto it = state::pending.begin(); it != state::pending.end();) {
-				if (it->frame <= cur) {
+				// якщо мод вимкнули посеред рівня — одразу віддаємо все, що лишилось
+				if (!enabled || it->frame <= cur) {
 					GJBaseGameLayer::handleButton(it->down, it->button, it->p1);
 					it = state::pending.erase(it);
 				} else {
