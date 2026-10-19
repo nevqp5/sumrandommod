@@ -1,9 +1,9 @@
 {
-	"geode": "4.6.0",
+	"geode": "5.11.2",
 	"gd": {
 		"win": "2.2081"
 	},
-	"id": "nevq.macro-assist",
+	"id": "yourname.macro-assist",
 	"name": "Macro Assist",
 	"version": "v1.0.0",
 	"developer": "yourname",
