@@ -1,0 +1,63 @@
+{
+	"geode": "4.6.0",
+	"gd": {
+		"win": "2.2081"
+	},
+	"id": "yourname.macro-assist",
+	"name": "Macro Assist",
+	"version": "v1.0.0",
+	"developer": "yourname",
+	"description": "Snaps your inputs to the timing of a loaded macro (configurable delay).",
+	"settings": {
+		"enabled": {
+			"type": "bool",
+			"name": "Enabled",
+			"default": true
+		},
+		"macro-path": {
+			"type": "file",
+			"name": "Macro file",
+			"description": "Macro in .json (MegaHack export) or .txt format (see README in main.cpp).",
+			"default": "",
+			"control": {
+				"dialog": "open",
+				"filters": [
+					{
+						"description": "Macro",
+						"files": ["*.json", "*.txt"]
+					}
+				]
+			}
+		},
+		"max-delay": {
+			"type": "int",
+			"name": "Max delay (frames)",
+			"description": "How many frames (at the macro's TPS, e.g. 240) the mod may delay your input to match the macro.",
+			"default": 4,
+			"min": 0,
+			"max": 60,
+			"control": {
+				"input": true,
+				"slider": true
+			}
+		},
+		"frame-offset": {
+			"type": "int",
+			"name": "Frame offset",
+			"description": "Shifts macro frames by N. Use this if everything lands 1 frame early/late (0-based vs 1-based).",
+			"default": 0,
+			"min": -10,
+			"max": 10,
+			"control": {
+				"input": true,
+				"arrows": true
+			}
+		},
+		"block-unmatched": {
+			"type": "bool",
+			"name": "Block unmatched inputs",
+			"description": "If on, presses/releases that don't match any macro event are swallowed. If off, they pass through unchanged.",
+			"default": false
+		}
+	}
+}
