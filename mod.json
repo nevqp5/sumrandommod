@@ -5,7 +5,7 @@
 	},
 	"id": "yourname.macro-assist",
 	"name": "Macro Assist",
-	"version": "v1.0.0",
+	"version": "v1.0.1",
 	"developer": "yourname",
 	"description": "Snaps your inputs to the timing of a loaded macro (configurable delay).",
 	"settings": {

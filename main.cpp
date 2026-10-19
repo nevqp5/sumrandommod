@@ -48,6 +48,10 @@ namespace state {
 	inline bool injecting = false;
 }
 
+$on_mod(Loaded) {
+	log::info("Macro Assist v{}: mod loaded, hooks registered", Mod::get()->getVersion().toVString());
+}
+
 static void loadGdr(std::filesystem::path const& path) {
 	auto bytes = file::readBinary(path);
 	if (!bytes) {
@@ -126,6 +130,11 @@ class $modify(AssistPlayLayer, PlayLayer) {
 	bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
 		if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
 		loadMacro();
+		Notification::create(
+			fmt::format("Macro Assist: {} events loaded", state::events.size()),
+			state::events.empty() ? NotificationIcon::Warning : NotificationIcon::Success,
+			3.f
+		)->show();
 		return true;
 	}
 
@@ -140,6 +149,12 @@ class $modify(AssistBaseLayer, GJBaseGameLayer) {
 	// Перехоплює інпут гравця.
 	void handleButton(bool down, int button, bool isPlayer1) {
 		auto mod = Mod::get();
+
+		static bool hookSeen = false;
+		if (!hookSeen) {
+			hookSeen = true;
+			Notification::create("Macro Assist: click hook works", NotificationIcon::Info, 2.f)->show();
+		}
 
 		// Вимкнено / нема макросу / це наша власна ін'єкція -> нічого не чіпаємо.
 		if (state::injecting
@@ -199,6 +214,7 @@ class $modify(AssistBaseLayer, GJBaseGameLayer) {
 				match->used = true;
 				return GJBaseGameLayer::handleButton(down, button, isPlayer1);
 			}
+			if (dbg) Notification::create(fmt::format("Blocked @ {} (macro {})", cur, match->frame), NotificationIcon::Warning, 0.5f)->show();
 			return; // рано -> проковтнуто
 		}
 
