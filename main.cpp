@@ -1,9 +1,9 @@
 /*
  * Macro Assist — Geode mod for Geometry Dash 2.2081 (Windows)
  *
- * Ти натискаєш кнопку -> мод шукає найближчу подію макросу того ж типу на поточному
- * кадрі або до `max-delay` кадрів уперед і відкладає твій інпут точно на цей кадр.
- * Раніше за себе інпут не рухається (тільки затримка).
+ * Режим BLOCK (за замовчуванням): за `max-delay` кадрів до події макросу (press або
+ * release) твій такий самий інпут вимкнено (проковтується). На кадрі макросу — проходить.
+ * Режим DELAY: ранній інпут не губиться, а відкладається на кадр макросу.
  *
  * Формати макросу:
  *   .gdr / .gdr2 — GDReplayFormat v2 (через бібліотеку libGDR)
@@ -141,7 +141,7 @@ class $modify(AssistBaseLayer, GJBaseGameLayer) {
 	void handleButton(bool down, int button, bool isPlayer1) {
 		auto mod = Mod::get();
 
-		// Вимкнено / нема макросу / це наша власна ін'єкція -> повністю нічого не чіпаємо.
+		// Вимкнено / нема макросу / це наша власна ін'єкція -> нічого не чіпаємо.
 		if (state::injecting
 			|| state::events.empty()
 			|| !mod->getSettingValue<bool>("enabled")
@@ -150,37 +150,59 @@ class $modify(AssistBaseLayer, GJBaseGameLayer) {
 		}
 
 		int cur = m_gameState.m_currentProgress;
-		int maxDelay = static_cast<int>(mod->getSettingValue<int64_t>("max-delay"));
+		int window = static_cast<int>(mod->getSettingValue<int64_t>("max-delay"));
+		bool delayMode = mod->getSettingValue<bool>("delay-mode");
+		bool blockUnmatched = mod->getSettingValue<bool>("block-unmatched");
+		bool dbg = mod->getSettingValue<bool>("debug-log");
 
-		// Якщо для цієї кнопки вже є відкладений інпут — новий мусить іти ПІСЛЯ нього,
-		// інакше порядок press/release ламається і кнопка "залипає".
+		// Для delay-режиму: якщо для цієї кнопки вже є відкладений інпут,
+		// новий мусить іти після нього (інакше press/release міняються місцями).
 		PendingInput* tail = nullptr;
-		for (auto& p : state::pending) {
-			if (p.button == button && p.p1 == isPlayer1) tail = &p;
+		if (delayMode) {
+			for (auto& p : state::pending) {
+				if (p.button == button && p.p1 == isPlayer1) tail = &p;
+			}
 		}
 		int minFrame = tail ? std::max(cur, tail->frame) : cur;
 
+		// Найближча невикористана подія макросу того ж типу в межах [cur, cur+window].
 		MacroEvent* match = nullptr;
 		auto it = std::lower_bound(state::events.begin(), state::events.end(), minFrame,
 			[](MacroEvent const& e, int f) { return e.frame < f; });
 		for (; it != state::events.end(); ++it) {
-			if (it->frame > cur + maxDelay) break;
+			if (it->frame > cur + window) break;
 			if (it->used || it->down != down || it->button != button || it->p1 != isPlayer1) continue;
 			match = &*it;
 			break;
 		}
 
+		if (dbg) {
+			log::info("Macro Assist: click {} btn={} p1={} at frame {} | macro match: {} | mode: {}",
+				down ? "DOWN" : "UP", button, isPlayer1, cur,
+				match ? std::to_string(match->frame) : std::string("none"),
+				delayMode ? "delay" : "block");
+		}
+
 		if (!match) {
-			if (tail) {
-				// зберігаємо порядок: ставимо одразу за попереднім відкладеним
-				if (mod->getSettingValue<bool>("block-unmatched")) return;
+			if (tail && delayMode) {
+				if (blockUnmatched) return;
 				state::pending.push_back({tail->frame, down, button, isPlayer1});
 				return;
 			}
-			if (mod->getSettingValue<bool>("block-unmatched")) return;
+			if (blockUnmatched) return;
 			return GJBaseGameLayer::handleButton(down, button, isPlayer1);
 		}
 
+		// ---- BLOCK-режим: за `window` кадрів до події макросу інпут вимкнено ----
+		if (!delayMode) {
+			if (match->frame <= cur) {
+				match->used = true;
+				return GJBaseGameLayer::handleButton(down, button, isPlayer1);
+			}
+			return; // рано -> проковтнуто
+		}
+
+		// ---- DELAY-режим: відкладаємо інпут на кадр макросу ----
 		match->used = true;
 		if (!tail && match->frame <= cur) {
 			return GJBaseGameLayer::handleButton(down, button, isPlayer1);

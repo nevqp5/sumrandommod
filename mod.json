@@ -24,15 +24,19 @@
 				"filters": [
 					{
 						"description": "Macro",
-						"files": ["*.gdr", "*.gdr2", "*.txt"]
+						"files": [
+							"*.gdr",
+							"*.gdr2",
+							"*.txt"
+						]
 					}
 				]
 			}
 		},
 		"max-delay": {
 			"type": "int",
-			"name": "Max delay (frames)",
-			"description": "How many frames (at the macro's TPS, e.g. 240) the mod may delay your input to match the macro.",
+			"name": "Window (frames)",
+			"description": "Скільки кадрів ДО події макросу інпут вимкнено (block) або може бути відкладений (delay).",
 			"default": 4,
 			"min": 0,
 			"max": 60,
@@ -58,6 +62,18 @@
 			"name": "Block unmatched inputs",
 			"description": "If on, presses/releases that don't match any macro event are swallowed. If off, they pass through unchanged.",
 			"default": false
+		},
+		"delay-mode": {
+			"type": "bool",
+			"name": "Delay instead of block",
+			"description": "Off: ранні кліки блокуються. On: ранні кліки відкладаються на кадр макросу.",
+			"default": false
+		},
+		"debug-log": {
+			"type": "bool",
+			"name": "Debug log",
+			"description": "Пише в лог кожен клік: кадр і найближча подія макросу.",
+			"default": true
 		}
 	}
 }
